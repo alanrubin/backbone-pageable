@@ -143,6 +143,8 @@ $(document).ready(function () {
     strictEqual(col.at(0).get("name"), "a");
     strictEqual(col.at(1).get("name"), "c");
     strictEqual(col.at(2).get("name"), "b");
+    strictEqual(col.state.totalRecords, 4);
+    strictEqual(col.state.totalPages, 2);
 
     var e = new Backbone.Model({name: "e"});
     col.fullCollection.push(e);
@@ -151,6 +153,8 @@ $(document).ready(function () {
     strictEqual(col.at(1).get("name"), "c");
     strictEqual(col.at(2).get("name"), "b");
     strictEqual(col.indexOf(e.cid), -1);
+    strictEqual(col.state.totalRecords, 5);
+    strictEqual(col.state.totalPages, 2);
 
     var f = new Backbone.Model({name: "f"});
     col.fullCollection.unshift(f);
@@ -159,9 +163,54 @@ $(document).ready(function () {
     strictEqual(col.at(0).get("name"), "f");
     strictEqual(col.at(1).get("name"), "a");
     strictEqual(col.at(2).get("name"), "c");
+    strictEqual(col.state.totalRecords, 6);
+    strictEqual(col.state.totalPages, 2);
   });
 
   test("remove", 15, function () {
+
+    var mods = models.slice();
+
+    var col = new Backbone.PageableCollection(mods, {
+      state: {
+        pageSize: 1
+      },
+      mode: "client"
+    });
+
+    strictEqual(col.state.totalRecords, 3);
+    strictEqual(col.state.totalPages, 3);
+
+    var onRemove = function () {
+      ok(true);
+    };
+    col.on("remove", onRemove);
+    col.fullCollection.on("remove", onRemove);
+
+    col.remove(col.at(0));
+    strictEqual(col.size(), 1);
+    strictEqual(col.at(0).get("name"), "c");
+    strictEqual(col.state.totalRecords, 2);
+    strictEqual(col.state.totalPages, 2);
+    strictEqual(col.fullCollection.size(), 2);
+    strictEqual(col.fullCollection.at(0).get("name"), "c");
+    strictEqual(col.fullCollection.at(1).get("name"), "b");
+
+    col.fullCollection.remove(col.fullCollection.at(1));
+    strictEqual(col.size(), 1);
+    strictEqual(col.at(0).get("name"), "c");
+    strictEqual(col.state.totalRecords, 1);
+    strictEqual(col.state.totalPages, 1);
+    strictEqual(col.fullCollection.size(), 1);
+
+    col.fullCollection.remove(col.fullCollection.at(0));
+    strictEqual(col.size(), 0);
+    strictEqual(col.fullCollection.size(), 0);
+    strictEqual(col.state.totalRecords, 0);
+    strictEqual(col.state.totalPages, 1);
+  });
+
+  test("remove from last page", 16, function () {
 
     var mods = models.slice();
 
@@ -178,21 +227,24 @@ $(document).ready(function () {
     col.on("remove", onRemove);
     col.fullCollection.on("remove", onRemove);
 
+    col.getPage(3);
+    strictEqual(col.state.currentPage, 3);
+
     col.remove(col.at(0));
     strictEqual(col.size(), 1);
     strictEqual(col.at(0).get("name"), "c");
-    strictEqual(col.fullCollection.size(), 2);
-    strictEqual(col.fullCollection.at(0).get("name"), "c");
-    strictEqual(col.fullCollection.at(1).get("name"), "b");
+    strictEqual(col.state.currentPage, 2);
 
     col.fullCollection.remove(col.fullCollection.at(1));
     strictEqual(col.size(), 1);
-    strictEqual(col.at(0).get("name"), "c");
+    strictEqual(col.at(0).get("name"), "a");
+    strictEqual(col.state.currentPage, 1);
     strictEqual(col.fullCollection.size(), 1);
 
     col.fullCollection.remove(col.fullCollection.at(0));
     strictEqual(col.size(), 0);
     strictEqual(col.fullCollection.size(), 0);
+    strictEqual(col.state.currentPage, 1);
   });
 
   test("change", 6, function () {
